@@ -49,11 +49,9 @@ details ol{padding-left:1.2em;margin:.5em 0}
 <div id="status" aria-live="polite"></div>
 <section class="online" aria-label="Online multiplayer">
   <h2>Play online with a friend</h2>
-  <p>Create a room and share its 6-character code. Friends can join from this link without configuring Supabase.</p>
   <div id="connection">Online not connected</div>
   <div class="online-row"><button class="primary" id="createRoom">Create room</button><input id="joinCode" aria-label="Room code" maxlength="6" placeholder="6-character room code" autocomplete="off"><button id="joinRoom">Join room</button></div>
   <div id="roomInfo" hidden><span>Room code: </span><span id="roomCode"></span><button id="copyCode">Copy code</button><button id="leaveRoom">Leave room</button></div>
-  <p class="online-note">Online connection is preconfigured. No account or setup is needed to join. The player who creates the room must stay connected during the game.</p>
 </section>
 <div id="big"></div>
 <div class="bar">
@@ -123,7 +121,7 @@ document.getElementById('createRoom').onclick=()=>enterRoom(randomCode(),'X');
 document.getElementById('joinRoom').onclick=()=>{const code=document.getElementById('joinCode').value.toUpperCase().replace(/[^A-Z0-9]/g,'');if(code.length!==6){setConnection('Enter the 6-character room code.');return}enterRoom(code,'O')};
 document.getElementById('copyCode').onclick=async()=>{try{await navigator.clipboard.writeText(roomCode);setConnection('Room code copied: '+roomCode)}catch{setConnection('Your room code is '+roomCode+' — copy it manually.')}};
 document.getElementById('leaveRoom').onclick=()=>disconnectRoom();
-setConnection("Ready to play online. Create a room or enter a friend's code.");reset();
+reset();
 </script>
 </body>
 </html>
