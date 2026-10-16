@@ -39,7 +39,7 @@ details ol{padding-left:1.2em;margin:.5em 0}
 .online-row{display:flex;gap:8px;flex-wrap:wrap}.online input{min-width:0;flex:1;background:var(--cell);color:var(--ink);border:1px solid var(--line);border-radius:9px;padding:10px;font:inherit;width:100%}
 .online button{font:700 .9rem inherit;font-family:inherit;color:var(--ink);background:var(--cell);border:1px solid var(--line);border-radius:9px;padding:9px 12px;cursor:pointer}
 .online button.primary{background:var(--hl);border-color:var(--hl);color:white}.online button:disabled{opacity:.5;cursor:not-allowed}
-#connection{font-size:.88rem;font-weight:650;color:var(--muted)}#roomCode{font-weight:900;letter-spacing:.14em;font-size:1.1rem}
+#connection{font-size:.88rem;font-weight:650;color:var(--muted)}.online-note{margin:0;color:var(--muted);font-size:.85rem;line-height:1.4}#roomCode{font-weight:900;letter-spacing:.14em;font-size:1.1rem}
 .online details{width:100%;font-size:.88rem}.online label{font-size:.85rem;font-weight:650;display:grid;gap:5px}
 
 </style>
@@ -49,17 +49,11 @@ details ol{padding-left:1.2em;margin:.5em 0}
 <div id="status" aria-live="polite"></div>
 <section class="online" aria-label="Online multiplayer">
   <h2>Play online with a friend</h2>
-  <p>Create a private room and share its code, or join a friend's room. Both players need the same Supabase project settings.</p>
+  <p>Create a room and share its 6-character code. Friends can join from this link without configuring Supabase.</p>
   <div id="connection">Online not connected</div>
   <div class="online-row"><button class="primary" id="createRoom">Create room</button><input id="joinCode" aria-label="Room code" maxlength="6" placeholder="6-character room code" autocomplete="off"><button id="joinRoom">Join room</button></div>
   <div id="roomInfo" hidden><span>Room code: </span><span id="roomCode"></span><button id="copyCode">Copy code</button><button id="leaveRoom">Leave room</button></div>
-  <details><summary>Online setup (required once)</summary>
-    <p>Free setup with Supabase: create a project at <a href="https://supabase.com" target="_blank" rel="noopener">supabase.com</a>, then copy the Project URL and the publishable/anon key from Project Settings → API.</p>
-    <label>Supabase project URL<input id="supabaseUrl" type="url" placeholder="https://your-project.supabase.co" autocomplete="url"></label>
-    <label>Supabase publishable / anon key<input id="supabaseKey" type="password" placeholder="sb_publishable_… or legacy anon key" autocomplete="off"></label>
-    <div class="online-row"><button class="primary" id="saveConfig">Save connection settings</button><button id="clearConfig">Clear saved settings</button></div>
-    <p>Settings are saved only in this browser. Use the public publishable/anon key only—never a service-role key. Realtime must be available for the project. This version uses live broadcast rooms and does not require a database table. Host must stay connected during the game.</p>
-  </details>
+  <p class="online-note">Online connection is preconfigured. No account or setup is needed to join. The player who creates the room must stay connected during the game.</p>
 </section>
 <div id="big"></div>
 <div class="bar">
@@ -107,9 +101,10 @@ function render(){
   if(onlineRole&&!over)st.innerHTML+=' <span style="font-size:.8em">(You are '+onlineRole+')</span>';
 }
 function setConnection(msg){connection.textContent=msg}
-function savedConfig(){try{return JSON.parse(localStorage.getItem('utt-supabase-config')||'null')}catch{return null}}
-function fillConfig(){const cfg=savedConfig();if(cfg){document.getElementById('supabaseUrl').value=cfg.url||'';document.getElementById('supabaseKey').value=cfg.key||''}}
-function connectClient(){const cfg=savedConfig();if(!cfg?.url||!cfg?.key){setConnection('Add your Supabase URL and public key in Online setup first.');return false}if(!window.supabase?.createClient){setConnection('Could not load the Supabase library. Check your internet connection and reopen the game.');return false}if(!client)client=window.supabase.createClient(cfg.url,cfg.key);return true}
+// Public browser configuration: safe to expose publishable/anon keys, never service-role keys.
+const SUPABASE_URL='https://mbysczygedkzcflslmlw.supabase.co';
+const SUPABASE_PUBLISHABLE_KEY='sb_publishable_bBqzi-GgyAPojtiqITM-nA_hQbeI0xq';
+function connectClient(){if(!window.supabase?.createClient){setConnection('Could not load the Supabase library. Check your internet connection and reopen the game.');return false}if(!client)client=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);return true}
 function snapshot(){return {cells,won,turn,next,over,last,updatedAt:Date.now()}}
 async function broadcastState(){if(!channel||!onlineRole||remoteApplying)return;try{await channel.send({type:'broadcast',event:'game-state',payload:{state:snapshot(),sender:onlineRole}})}catch(e){setConnection('Connection issue while syncing: '+e.message)}}
 function applyState(s){if(!s||!Array.isArray(s.cells)||s.cells.length!==81||!Array.isArray(s.won)||s.won.length!==9)return;remoteApplying=true;cells=s.cells;won=s.won;turn=s.turn;next=s.next;over=s.over;last=s.last;busy=false;render();remoteApplying=false;setConnection('Connected · Room '+roomCode+' · You play '+onlineRole)}
@@ -124,13 +119,11 @@ async function enterRoom(code,role){if(!connectClient())return;if(channel)await 
 }
 document.getElementById('reset').onclick=()=>{if(onlineRole){if(onlineRole==='X')reset();else setConnection('Only the room creator can restart the game.')}else reset()};
 modeBtn.onclick=()=>{if(onlineRole){setConnection('Leave the online room before switching to computer mode.');return}ai=!ai;modeBtn.setAttribute('aria-pressed',ai);modeBtn.textContent=ai?'Playing vs computer':'Play vs computer';reset()};
-document.getElementById('saveConfig').onclick=()=>{const url=document.getElementById('supabaseUrl').value.trim().replace(/\/$/,'');const key=document.getElementById('supabaseKey').value.trim();if(!/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(url)||!key){setConnection('Enter a valid https://…supabase.co URL and a public anon/publishable key.');return}localStorage.setItem('utt-supabase-config',JSON.stringify({url,key}));client=null;setConnection('Settings saved in this browser. You can create or join a room.');};
-document.getElementById('clearConfig').onclick=()=>{localStorage.removeItem('utt-supabase-config');document.getElementById('supabaseUrl').value='';document.getElementById('supabaseKey').value='';client=null;setConnection('Saved settings cleared from this browser.')};
 document.getElementById('createRoom').onclick=()=>enterRoom(randomCode(),'X');
 document.getElementById('joinRoom').onclick=()=>{const code=document.getElementById('joinCode').value.toUpperCase().replace(/[^A-Z0-9]/g,'');if(code.length!==6){setConnection('Enter the 6-character room code.');return}enterRoom(code,'O')};
 document.getElementById('copyCode').onclick=async()=>{try{await navigator.clipboard.writeText(roomCode);setConnection('Room code copied: '+roomCode)}catch{setConnection('Your room code is '+roomCode+' — copy it manually.')}};
 document.getElementById('leaveRoom').onclick=()=>disconnectRoom();
-fillConfig();reset();
+setConnection("Ready to play online. Create a room or enter a friend's code.");reset();
 </script>
 </body>
 </html>
