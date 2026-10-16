@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ultimate Tic-Tac-Toe</title>
+<style>
+:root{--bg:#f1f3fb;--panel:#e3e7f5;--cell:#fff;--ink:#1b2145;--muted:#5a6390;--x:#d9480f;--o:#1971c2;--hl:#7048e8;--line:#c5cce6;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#12152b;--panel:#1c2142;--cell:#252b54;--ink:#eef0ff;--muted:#9aa3d6;--x:#ffb703;--o:#4cc9f0;--hl:#a78bfa;--line:#38407a}}
+:root[data-theme="dark"]{--bg:#12152b;--panel:#1c2142;--cell:#252b54;--ink:#eef0ff;--muted:#9aa3d6;--x:#ffb703;--o:#4cc9f0;--hl:#a78bfa;--line:#38407a}
+*{box-sizing:border-box}
+html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);font-family:"Avenir Next","Segoe UI",system-ui,sans-serif;display:flex;flex-direction:column;align-items:center;gap:10px;padding:12px 12px 18px}
+h1{margin:4px 0 0;font-size:1.35rem;font-weight:800;letter-spacing:-.01em}
+#status{font-weight:700;font-size:1.02rem;min-height:1.5em;text-align:center}
+#status b{font-size:1.25em}
+.X{color:var(--x)}.O{color:var(--o)}
+#big{container-type:inline-size;width:min(100%,calc(100dvh - 210px),560px);min-width:280px;aspect-ratio:1;display:grid;grid-template-columns:repeat(3,1fr);gap:2.2cqw}
+.sb{position:relative;display:grid;grid-template-columns:repeat(3,1fr);gap:.8cqw;padding:1.2cqw;border-radius:2.2cqw;background:var(--panel);border:.5cqw solid transparent;transition:border-color .15s,box-shadow .15s}
+.sb.on{border-color:var(--hl);box-shadow:0 0 0 .6cqw color-mix(in srgb,var(--hl) 30%,transparent)}
+.c{border:0;border-radius:1.2cqw;background:var(--cell);color:var(--ink);font:800 7cqw/1 inherit;font-family:inherit;padding:0;cursor:pointer;display:grid;place-items:center;min-width:0;min-height:0}
+.c:disabled{cursor:default}
+.c.X{color:var(--x)}.c.O{color:var(--o)}
+.c.last{outline:.5cqw solid var(--hl);outline-offset:-.5cqw}
+.sb.on .c:not(:disabled):hover{background:color-mix(in srgb,var(--hl) 22%,var(--cell))}
+.c:focus-visible{outline:.6cqw solid var(--hl);outline-offset:.2cqw}
+.ov{position:absolute;inset:0;border-radius:2.2cqw;display:grid;place-items:center;font-weight:900;font-size:24cqw;line-height:1;background:color-mix(in srgb,var(--bg) 82%,transparent);pointer-events:none;animation:pop .22s ease-out}
+.ov.D{font-size:9cqw;color:var(--muted)}
+@keyframes pop{from{transform:scale(.6);opacity:0}}
+@media (prefers-reduced-motion:reduce){.ov{animation:none}}
+.bar{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+button.t{font:700 .92rem inherit;font-family:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:9px 14px;cursor:pointer}
+button.t[aria-pressed="true"]{background:var(--hl);color:#fff;border-color:var(--hl)}
+details{max-width:560px;width:100%;font-size:.92rem;line-height:1.5;color:var(--muted)}
+summary{cursor:pointer;font-weight:700;color:var(--ink)}
+details ol{padding-left:1.2em;margin:.5em 0}
+.online{width:min(100%,560px);background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px;display:grid;gap:10px}
+.online h2{font-size:1rem;margin:0}.online p{margin:0;color:var(--muted);font-size:.88rem;line-height:1.4}
+.online-row{display:flex;gap:8px;flex-wrap:wrap}.online input{min-width:0;flex:1;background:var(--cell);color:var(--ink);border:1px solid var(--line);border-radius:9px;padding:10px;font:inherit;width:100%}
+.online button{font:700 .9rem inherit;font-family:inherit;color:var(--ink);background:var(--cell);border:1px solid var(--line);border-radius:9px;padding:9px 12px;cursor:pointer}
+.online button.primary{background:var(--hl);border-color:var(--hl);color:white}.online button:disabled{opacity:.5;cursor:not-allowed}
+#connection{font-size:.88rem;font-weight:650;color:var(--muted)}#roomCode{font-weight:900;letter-spacing:.14em;font-size:1.1rem}
+.online details{width:100%;font-size:.88rem}.online label{font-size:.85rem;font-weight:650;display:grid;gap:5px}
+
+</style>
+</head>
+<body>
+<h1>Ultimate Tic-Tac-Toe</h1>
+<div id="status" aria-live="polite"></div>
+<section class="online" aria-label="Online multiplayer">
+  <h2>Play online with a friend</h2>
+  <p>Create a private room and share its code, or join a friend's room. Both players need the same Supabase project settings.</p>
+  <div id="connection">Online not connected</div>
+  <div class="online-row"><button class="primary" id="createRoom">Create room</button><input id="joinCode" aria-label="Room code" maxlength="6" placeholder="6-character room code" autocomplete="off"><button id="joinRoom">Join room</button></div>
+  <div id="roomInfo" hidden><span>Room code: </span><span id="roomCode"></span><button id="copyCode">Copy code</button><button id="leaveRoom">Leave room</button></div>
+  <details><summary>Online setup (required once)</summary>
+    <p>Free setup with Supabase: create a project at <a href="https://supabase.com" target="_blank" rel="noopener">supabase.com</a>, then copy the Project URL and the publishable/anon key from Project Settings → API.</p>
+    <label>Supabase project URL<input id="supabaseUrl" type="url" placeholder="https://your-project.supabase.co" autocomplete="url"></label>
+    <label>Supabase publishable / anon key<input id="supabaseKey" type="password" placeholder="sb_publishable_… or legacy anon key" autocomplete="off"></label>
+    <div class="online-row"><button class="primary" id="saveConfig">Save connection settings</button><button id="clearConfig">Clear saved settings</button></div>
+    <p>Settings are saved only in this browser. Use the public publishable/anon key only—never a service-role key. Realtime must be available for the project. This version uses live broadcast rooms and does not require a database table. Host must stay connected during the game.</p>
+  </details>
+</section>
+<div id="big"></div>
+<div class="bar">
+  <button class="t" id="mode" aria-pressed="false">Play vs computer</button>
+  <button class="t" id="reset">New game</button>
+</div>
+<details>
+<summary>How to play</summary>
+<ol>
+<li>Win three small boards in a row (across, down or diagonal) to win the game.</li>
+<li>Where you place a mark decides which small board your opponent must play in next. A mark in the top-right square of any board sends them to the top-right board.</li>
+<li>Three in a row on a small board wins it and locks it with a big X or O.</li>
+<li>If you are sent to a board that is already won or full, you get a wildcard: play any open square on any open board.</li>
+<li>X goes first, and may play anywhere.</li>
+</ol>
+</details>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const L=[[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+const big=document.getElementById('big'),st=document.getElementById('status'),modeBtn=document.getElementById('mode');
+const connection=document.getElementById('connection'),roomInfo=document.getElementById('roomInfo'),roomCodeEl=document.getElementById('roomCode');
+let cells,won,turn,next,over,last,ai=false,busy=false;
+let client=null,channel=null,roomCode=null,onlineRole=null,onlineReady=false,remoteApplying=false;
+const win=a=>{for(const[l1,l2,l3]of L)if(a[l1]&&a[l1]!=='D'&&a[l1]===a[l2]&&a[l1]===a[l3])return a[l1];return null};
+const full=b=>{for(let i=0;i<9;i++)if(!cells[b*9+i])return false;return true};
+const open=b=>!won[b]&&!full(b);
+function legal(){const bs=next<0?[0,1,2,3,4,5,6,7,8].filter(open):[next];const m=[];for(const b of bs)for(let c=0;c<9;c++)if(!cells[b*9+c])m.push([b,c]);return m}
+function reset(){if(onlineRole){if(onlineRole!=='X'){connection.textContent='Only the room creator can start a new game.';return} }cells=Array(81).fill(null);won=Array(9).fill(null);turn='X';next=-1;over=false;last=null;busy=false;render();broadcastState()}
+function play(b,c){
+  if(over||busy||cells[b*9+c]||won[b]||(next>=0&&next!==b))return;
+  if(onlineRole&&(!onlineReady||turn!==onlineRole)){connection.textContent='Waiting for your turn.';return}
+  cells[b*9+c]=turn;last=b*9+c;
+  const sub=cells.slice(b*9,b*9+9);
+  if(win(sub))won[b]=turn;else if(full(b))won[b]='D';
+  const w=win(won.map(v=>v));
+  if(w){over=w}else{next=open(c)?c:-1;turn=turn==='X'?'O':'X';if(!legal().length)over='D'}
+  render();broadcastState();
+  if(!over&&ai&&turn==='O'){busy=true;setTimeout(()=>{busy=false;aiMove()},450)}
+}
+function aiMove(){const ms=legal();if(!ms.length)return;let best=-1e9,pick=ms[0];for(const[b,c]of ms){let s=Math.random()*2;const sub=cells.slice(b*9,b*9+9);sub[c]='O';if(win(sub))s+=10;const sx=cells.slice(b*9,b*9+9);sx[c]='X';if(win(sx))s+=6;if(c===4)s+=1.5;else if(c%2===0)s+=.7;if(!open(c)&&c!==b)s-=2;else{const t=cells.slice(c*9,c*9+9);for(let i=0;i<9;i++)if(!t[i]){t[i]='X';if(win(t))s-=5;t[i]=null}}if(c===b&&!won[b])s-=1;if(s>best){best=s;pick=[b,c]}}play(pick[0],pick[1])}
+function render(){
+  big.innerHTML='';const playable=new Set(over?[]:legal().map(m=>m[0]));
+  for(let b=0;b<9;b++){const sb=document.createElement('div');sb.className='sb'+(playable.has(b)?' on':'');for(let c=0;c<9;c++){const i=b*9+c,v=cells[i],btn=document.createElement('button');btn.className='c'+(v?' '+v:'')+(i===last?' last':'');btn.textContent=v||'';btn.disabled=!!v||!playable.has(b)||(ai&&turn==='O')||(!!onlineRole&&(!onlineReady||turn!==onlineRole));btn.setAttribute('aria-label','Board '+(b+1)+', square '+(c+1)+(v?', '+v:''));btn.onclick=()=>play(b,c);sb.appendChild(btn)}if(won[b]){const o=document.createElement('div');o.className='ov '+won[b];o.textContent=won[b]==='D'?'draw':won[b];sb.appendChild(o)}big.appendChild(sb)}
+  if(over==='D')st.textContent='It’s a draw.';else if(over)st.innerHTML='<b class="'+over+'">'+over+'</b> wins the game!';else st.innerHTML='<b class="'+turn+'">'+turn+'</b>'+(ai&&turn==='O'?' is thinking…':'’s turn')+' – '+(next<0?'play in any open board':'play in the highlighted board');
+  if(onlineRole&&!over)st.innerHTML+=' <span style="font-size:.8em">(You are '+onlineRole+')</span>';
+}
+function setConnection(msg){connection.textContent=msg}
+function savedConfig(){try{return JSON.parse(localStorage.getItem('utt-supabase-config')||'null')}catch{return null}}
+function fillConfig(){const cfg=savedConfig();if(cfg){document.getElementById('supabaseUrl').value=cfg.url||'';document.getElementById('supabaseKey').value=cfg.key||''}}
+function connectClient(){const cfg=savedConfig();if(!cfg?.url||!cfg?.key){setConnection('Add your Supabase URL and public key in Online setup first.');return false}if(!window.supabase?.createClient){setConnection('Could not load the Supabase library. Check your internet connection and reopen the game.');return false}if(!client)client=window.supabase.createClient(cfg.url,cfg.key);return true}
+function snapshot(){return {cells,won,turn,next,over,last,updatedAt:Date.now()}}
+async function broadcastState(){if(!channel||!onlineRole||remoteApplying)return;try{await channel.send({type:'broadcast',event:'game-state',payload:{state:snapshot(),sender:onlineRole}})}catch(e){setConnection('Connection issue while syncing: '+e.message)}}
+function applyState(s){if(!s||!Array.isArray(s.cells)||s.cells.length!==81||!Array.isArray(s.won)||s.won.length!==9)return;remoteApplying=true;cells=s.cells;won=s.won;turn=s.turn;next=s.next;over=s.over;last=s.last;busy=false;render();remoteApplying=false;setConnection('Connected · Room '+roomCode+' · You play '+onlineRole)}
+async function disconnectRoom(message='You left the room.'){if(channel){try{await client.removeChannel(channel)}catch{}}channel=null;roomCode=null;onlineRole=null;onlineReady=false;roomInfo.hidden=true;ai=false;modeBtn.setAttribute('aria-pressed','false');modeBtn.textContent='Play vs computer';setConnection(message);reset()}
+function randomCode(){const chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';let out='';for(let i=0;i<6;i++)out+=chars[Math.floor(Math.random()*chars.length)];return out}
+async function enterRoom(code,role){if(!connectClient())return;if(channel)await disconnectRoom('Switching rooms…');roomCode=code;onlineRole=role;ai=false;modeBtn.setAttribute('aria-pressed','false');modeBtn.textContent='Play vs computer';onlineReady=false;roomInfo.hidden=false;roomCodeEl.textContent=code;setConnection('Connecting to room '+code+'…');
+  channel=client.channel('utt-room-'+code,{config:{broadcast:{self:false,ack:true}}});
+  channel.on('broadcast',{event:'game-state'},({payload})=>{if(payload?.sender===onlineRole)return;if(payload?.state)applyState(payload.state)});
+  channel.on('broadcast',{event:'sync-request'},async({payload})=>{if(onlineRole==='X'&&payload?.sender==='O')await broadcastState()});
+  channel.on('broadcast',{event:'room-hello'},async({payload})=>{if(onlineRole==='X'&&payload?.sender==='O')await broadcastState()});
+  channel.subscribe(async status=>{if(status==='SUBSCRIBED'){onlineReady=true;setConnection('Connected · Room '+roomCode+' · You play '+onlineRole);if(role==='X'){reset()}else{await channel.send({type:'broadcast',event:'sync-request',payload:{sender:'O'}});await channel.send({type:'broadcast',event:'room-hello',payload:{sender:'O'}});setConnection('Connected · Waiting for room state…')}}else if(status==='CHANNEL_ERROR'||status==='TIMED_OUT'){onlineReady=false;setConnection('Could not connect. Check Supabase settings and Realtime availability.')}})
+}
+document.getElementById('reset').onclick=()=>{if(onlineRole){if(onlineRole==='X')reset();else setConnection('Only the room creator can restart the game.')}else reset()};
+modeBtn.onclick=()=>{if(onlineRole){setConnection('Leave the online room before switching to computer mode.');return}ai=!ai;modeBtn.setAttribute('aria-pressed',ai);modeBtn.textContent=ai?'Playing vs computer':'Play vs computer';reset()};
+document.getElementById('saveConfig').onclick=()=>{const url=document.getElementById('supabaseUrl').value.trim().replace(/\/$/,'');const key=document.getElementById('supabaseKey').value.trim();if(!/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(url)||!key){setConnection('Enter a valid https://…supabase.co URL and a public anon/publishable key.');return}localStorage.setItem('utt-supabase-config',JSON.stringify({url,key}));client=null;setConnection('Settings saved in this browser. You can create or join a room.');};
+document.getElementById('clearConfig').onclick=()=>{localStorage.removeItem('utt-supabase-config');document.getElementById('supabaseUrl').value='';document.getElementById('supabaseKey').value='';client=null;setConnection('Saved settings cleared from this browser.')};
+document.getElementById('createRoom').onclick=()=>enterRoom(randomCode(),'X');
+document.getElementById('joinRoom').onclick=()=>{const code=document.getElementById('joinCode').value.toUpperCase().replace(/[^A-Z0-9]/g,'');if(code.length!==6){setConnection('Enter the 6-character room code.');return}enterRoom(code,'O')};
+document.getElementById('copyCode').onclick=async()=>{try{await navigator.clipboard.writeText(roomCode);setConnection('Room code copied: '+roomCode)}catch{setConnection('Your room code is '+roomCode+' — copy it manually.')}};
+document.getElementById('leaveRoom').onclick=()=>disconnectRoom();
+fillConfig();reset();
+</script>
+</body>
+</html>
