@@ -34,6 +34,20 @@ button.t[aria-pressed="true"]{background:var(--hl);color:#fff;border-color:var(-
 details{max-width:560px;width:100%;font-size:.92rem;line-height:1.5;color:var(--muted)}
 summary{cursor:pointer;font-weight:700;color:var(--ink)}
 details ol{padding-left:1.2em;margin:.5em 0}
+.game-layout{display:flex;align-items:flex-start;justify-content:center;gap:14px;width:min(100%,1050px)}
+#big{flex:0 1 560px;width:min(100%,calc(100dvh - 210px),560px);min-width:280px}
+.chat{width:280px;flex:0 0 280px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px;display:grid;gap:9px;min-width:0}
+.chat h2{font-size:1rem;margin:0}.chat-subtitle{margin:0;color:var(--muted);font-size:.82rem}
+.chat input{min-width:0;width:100%;background:var(--cell);color:var(--ink);border:1px solid var(--line);border-radius:9px;padding:10px;font:inherit}
+.chat button{font:700 .9rem inherit;font-family:inherit;color:var(--ink);background:var(--cell);border:1px solid var(--line);border-radius:9px;padding:8px 10px;cursor:pointer}
+.chat button.primary{background:var(--hl);border-color:var(--hl);color:#fff}
+#chatMessages{height:250px;overflow:auto;display:flex;flex-direction:column;gap:8px;background:var(--cell);border:1px solid var(--line);border-radius:10px;padding:9px;overflow-wrap:anywhere}
+.chat-empty{color:var(--muted);font-size:.85rem;margin:auto;text-align:center}
+.chat-message{max-width:95%;align-self:flex-start;background:var(--panel);border-radius:10px;padding:7px 9px;font-size:.9rem;white-space:pre-wrap;overflow-wrap:anywhere}
+.chat-message.mine{align-self:flex-end;background:color-mix(in srgb,var(--hl) 18%,var(--cell))}
+.chat-message strong{display:block;font-size:.75rem;color:var(--muted);margin-bottom:2px}
+.chat-compose{display:flex;gap:6px}.chat-compose input{flex:1;min-width:0}.emoji-row{display:flex;gap:5px;flex-wrap:wrap}.chat .emoji-row button{padding:5px 8px;font-size:1.05rem}
+@media(max-width:760px){.game-layout{flex-direction:column;align-items:center}.chat{width:min(100%,560px);flex:initial}#chatMessages{height:180px}#big{width:min(100%,calc(100dvh - 210px),560px)}}
 .online{width:min(100%,560px);background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px;display:grid;gap:10px}
 .online h2{font-size:1rem;margin:0}.online p{margin:0;color:var(--muted);font-size:.88rem;line-height:1.4}
 .online-row{display:flex;gap:8px;flex-wrap:wrap}.online input{min-width:0;flex:1;background:var(--cell);color:var(--ink);border:1px solid var(--line);border-radius:9px;padding:10px;font:inherit;width:100%}
@@ -53,7 +67,18 @@ details ol{padding-left:1.2em;margin:.5em 0}
   <div class="online-row"><button class="primary" id="createRoom">Create room</button><input id="joinCode" aria-label="Room code" maxlength="6" placeholder="6-character room code" autocomplete="off"><button id="joinRoom">Join room</button></div>
   <div id="roomInfo" hidden><span>Room code: </span><span id="roomCode"></span><button id="copyCode">Copy code</button><button id="leaveRoom">Leave room</button></div>
 </section>
-<div id="big"></div>
+<div class="game-layout">
+  <div id="big"></div>
+  <section class="chat" aria-label="Room chat">
+    <h2>Room chat</h2>
+    <p class="chat-subtitle" id="chatStatus">Join an online room to chat with your opponent.</p>
+    <label style="display:grid;gap:5px;font-size:.85rem;font-weight:650" for="nickname">Your nickname</label>
+    <input id="nickname" maxlength="24" placeholder="Enter your nickname" autocomplete="nickname">
+    <div id="chatMessages" role="log" aria-live="polite" aria-label="Chat messages"><div class="chat-empty">Messages will appear here when you join a room.</div></div>
+    <div class="emoji-row" aria-label="Insert emoji"><button type="button" data-emoji="😀" aria-label="Insert grinning face">😀</button><button type="button" data-emoji="😂" aria-label="Insert laughing face">😂</button><button type="button" data-emoji="👍" aria-label="Insert thumbs up">👍</button><button type="button" data-emoji="❤️" aria-label="Insert heart">❤️</button><button type="button" data-emoji="🎉" aria-label="Insert party popper">🎉</button></div>
+    <form id="chatForm" class="chat-compose"><input id="chatInput" maxlength="300" placeholder="Write a message…" aria-label="Chat message" autocomplete="off"><button class="primary" type="submit">Send</button></form>
+  </section>
+</div>
 <div class="bar">
   <button class="t" id="mode" aria-pressed="false">Play vs computer</button>
   <button class="t" id="reset">New game</button>
@@ -75,6 +100,7 @@ const big=document.getElementById('big'),st=document.getElementById('status'),mo
 const connection=document.getElementById('connection'),roomInfo=document.getElementById('roomInfo'),roomCodeEl=document.getElementById('roomCode');
 let cells,won,turn,next,over,last,ai=false,busy=false;
 let client=null,channel=null,roomCode=null,onlineRole=null,onlineReady=false,remoteApplying=false;
+let nickname= 'Player';
 const win=a=>{for(const[l1,l2,l3]of L)if(a[l1]&&a[l1]!=='D'&&a[l1]===a[l2]&&a[l1]===a[l3])return a[l1];return null};
 const full=b=>{for(let i=0;i<9;i++)if(!cells[b*9+i])return false;return true};
 const open=b=>!won[b]&&!full(b);
@@ -99,6 +125,15 @@ function render(){
   if(onlineRole&&!over)st.innerHTML+=' <span style="font-size:.8em">(You are '+onlineRole+')</span>';
 }
 function setConnection(msg){connection.textContent=msg}
+const nicknameInput=document.getElementById('nickname'),chatInput=document.getElementById('chatInput'),chatMessages=document.getElementById('chatMessages'),chatStatus=document.getElementById('chatStatus');
+nicknameInput.value='Player '+Math.random().toString(36).slice(2,6).toUpperCase();
+function currentNickname(){return nicknameInput.value.trim().slice(0,24)||'Player '+(onlineRole||'Guest')}
+function clearChat(note='Messages will appear here when you join a room.'){chatMessages.replaceChildren();const empty=document.createElement('div');empty.className='chat-empty';empty.textContent=note;chatMessages.appendChild(empty)}
+function addChatMessage(message,isMine=false){if(!message||typeof message.text!=='string')return;const empty=chatMessages.querySelector('.chat-empty');if(empty)empty.remove();const bubble=document.createElement('div');bubble.className='chat-message'+(isMine?' mine':'');const sender=document.createElement('strong');sender.textContent=String(message.name||'Player').slice(0,24);const body=document.createElement('span');body.textContent=message.text.slice(0,300);bubble.append(sender,body);chatMessages.appendChild(bubble);chatMessages.scrollTop=chatMessages.scrollHeight}
+async function sendChatMessage(text){const clean=text.trim().slice(0,300);if(!clean)return;if(!channel||!onlineRole||!onlineReady){chatStatus.textContent='Join an online room before chatting.';return}const message={name:currentNickname(),text:clean,sender:onlineRole,at:Date.now()};addChatMessage(message,true);chatInput.value='';try{const result=await channel.send({type:'broadcast',event:'chat-message',payload:message});if(result==='error')chatStatus.textContent='Message could not be sent. Check your connection.';else chatStatus.textContent='Chatting in room '+roomCode+'.'}catch(e){chatStatus.textContent='Message could not be sent. Check your connection.'}}
+nicknameInput.addEventListener('change',()=>{chatStatus.textContent=roomCode?'Your nickname is now '+currentNickname()+'.':'Nickname ready: '+currentNickname()+'.'})
+document.getElementById('chatForm').addEventListener('submit',e=>{e.preventDefault();sendChatMessage(chatInput.value)})
+document.querySelectorAll('[data-emoji]').forEach(button=>button.addEventListener('click',()=>{const emoji=button.dataset.emoji;const start=chatInput.selectionStart??chatInput.value.length,end=chatInput.selectionEnd??start;chatInput.value=chatInput.value.slice(0,start)+emoji+chatInput.value.slice(end);chatInput.focus();chatInput.setSelectionRange(start+emoji.length,start+emoji.length)}));
 // Public browser configuration: safe to expose publishable/anon keys, never service-role keys.
 const SUPABASE_URL='https://mbysczygedkzcflslmlw.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY='sb_publishable_bBqzi-GgyAPojtiqITM-nA_hQbeI0xq';
@@ -106,14 +141,15 @@ function connectClient(){if(!window.supabase?.createClient){setConnection('Could
 function snapshot(){return {cells,won,turn,next,over,last,updatedAt:Date.now()}}
 async function broadcastState(){if(!channel||!onlineRole||remoteApplying)return;try{await channel.send({type:'broadcast',event:'game-state',payload:{state:snapshot(),sender:onlineRole}})}catch(e){setConnection('Connection issue while syncing: '+e.message)}}
 function applyState(s){if(!s||!Array.isArray(s.cells)||s.cells.length!==81||!Array.isArray(s.won)||s.won.length!==9)return;remoteApplying=true;cells=s.cells;won=s.won;turn=s.turn;next=s.next;over=s.over;last=s.last;busy=false;render();remoteApplying=false;setConnection('Connected · Room '+roomCode+' · You play '+onlineRole)}
-async function disconnectRoom(message='You left the room.'){if(channel){try{await client.removeChannel(channel)}catch{}}channel=null;roomCode=null;onlineRole=null;onlineReady=false;roomInfo.hidden=true;ai=false;modeBtn.setAttribute('aria-pressed','false');modeBtn.textContent='Play vs computer';setConnection(message);reset()}
+async function disconnectRoom(message='You left the room.'){if(channel){try{await client.removeChannel(channel)}catch{}}channel=null;roomCode=null;onlineRole=null;onlineReady=false;roomInfo.hidden=true;ai=false;modeBtn.setAttribute('aria-pressed','false');modeBtn.textContent='Play vs computer';setConnection(message);chatStatus.textContent='Join an online room to chat with your opponent.';clearChat();reset()}
 function randomCode(){const chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';let out='';for(let i=0;i<6;i++)out+=chars[Math.floor(Math.random()*chars.length)];return out}
-async function enterRoom(code,role){if(!connectClient())return;if(channel)await disconnectRoom('Switching rooms…');roomCode=code;onlineRole=role;ai=false;modeBtn.setAttribute('aria-pressed','false');modeBtn.textContent='Play vs computer';onlineReady=false;roomInfo.hidden=false;roomCodeEl.textContent=code;setConnection('Connecting to room '+code+'…');
+async function enterRoom(code,role){if(!connectClient())return;if(channel)await disconnectRoom('Switching rooms…');roomCode=code;onlineRole=role;ai=false;modeBtn.setAttribute('aria-pressed','false');modeBtn.textContent='Play vs computer';onlineReady=false;roomInfo.hidden=false;roomCodeEl.textContent=code;setConnection('Connecting to room '+code+'…');chatStatus.textContent='Connecting to room '+code+'…';clearChat('Connecting to room…');
   channel=client.channel('utt-room-'+code,{config:{broadcast:{self:false,ack:true}}});
   channel.on('broadcast',{event:'game-state'},({payload})=>{if(payload?.sender===onlineRole)return;if(payload?.state)applyState(payload.state)});
+  channel.on('broadcast',{event:'chat-message'},({payload})=>{if(payload?.sender!==onlineRole)addChatMessage(payload,false)});
   channel.on('broadcast',{event:'sync-request'},async({payload})=>{if(onlineRole==='X'&&payload?.sender==='O')await broadcastState()});
   channel.on('broadcast',{event:'room-hello'},async({payload})=>{if(onlineRole==='X'&&payload?.sender==='O')await broadcastState()});
-  channel.subscribe(async status=>{if(status==='SUBSCRIBED'){onlineReady=true;setConnection('Connected · Room '+roomCode+' · You play '+onlineRole);if(role==='X'){reset()}else{await channel.send({type:'broadcast',event:'sync-request',payload:{sender:'O'}});await channel.send({type:'broadcast',event:'room-hello',payload:{sender:'O'}});setConnection('Connected · Waiting for room state…')}}else if(status==='CHANNEL_ERROR'||status==='TIMED_OUT'){onlineReady=false;setConnection('Could not connect. Check Supabase settings and Realtime availability.')}})
+  channel.subscribe(async status=>{if(status==='SUBSCRIBED'){onlineReady=true;setConnection('Connected · Room '+roomCode+' · You play '+onlineRole);chatStatus.textContent='Chatting in room '+roomCode+' as '+currentNickname()+'.';clearChat('You are connected. Say hello!');if(role==='X'){reset()}else{await channel.send({type:'broadcast',event:'sync-request',payload:{sender:'O'}});await channel.send({type:'broadcast',event:'room-hello',payload:{sender:'O'}});setConnection('Connected · Waiting for room state…')}}else if(status==='CHANNEL_ERROR'||status==='TIMED_OUT'){onlineReady=false;setConnection('Could not connect. Check Supabase settings and Realtime availability.');chatStatus.textContent='Chat unavailable until the room reconnects.'}})
 }
 document.getElementById('reset').onclick=()=>{if(onlineRole){if(onlineRole==='X')reset();else setConnection('Only the room creator can restart the game.')}else reset()};
 modeBtn.onclick=()=>{if(onlineRole){setConnection('Leave the online room before switching to computer mode.');return}ai=!ai;modeBtn.setAttribute('aria-pressed',ai);modeBtn.textContent=ai?'Playing vs computer':'Play vs computer';reset()};
